@@ -1,0 +1,2 @@
+tetris:
+    gcc -Wall -o tetris main.c
