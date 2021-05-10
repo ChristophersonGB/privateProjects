@@ -1,10 +1,17 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-//#include <curses.h> //figure out curses sometime
+// #include <curses.h> //figure out curses sometime
+#include <sys/ioctl.h> // used to find window size - unix-based specific
+#include <signal.h> // used to catch SIGWINCH
+// #include "main.h"
 
-#define DEFAULT_WIDTH 10 // default amount of spaces that tetrimos can be stacked in, horizontally
-#define DEFAULT_HEIGHT 20 // default amount of spaces that tetrimos can be stacked in, vertically
-#define COMBINED_WALL_WIDTH 2 // character width of one wall * 2
+#define DEFAULT_WIDTH           10      // default amount of spaces that tetrimos can be stacked in, horizontally
+#define DEFAULT_HEIGHT          20      // default amount of spaces that tetrimos can be stacked in, vertically
+#define COMBINED_WALL_WIDTH     2       // character width of one wall * 2
+#define PADDING_CHAR            "#"     // character to be printed outside of the 
+
+// tetrimos defined in main.h
 
 const char TETRIMOS[7][8] = 
 {
@@ -15,14 +22,145 @@ const char TETRIMOS[7][8] =
     " xx xx  ", // S
     " x  xxx ", // T
     "xx   xx "  // Z
+};
+
+struct winsize window;
+
+/*
+*   Tetris Program
+*   May 2021 - @ChristophersonGB
+*   
+*   
+*   - Currently Linux (potentially Unix-like) specific, not very portable
+*       EX: Terminal Size, exit code, etc
+*
+*/
+
+void onScreenResize(int sig){
+    ioctl(fileno(stdout), TIOCGWINSZ, &window);
 }
 
+void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, int rotation){
+    int rowSize = DEFAULT_WIDTH + COMBINED_WALL_WIDTH;
+    // Tetrimos are stored as a string of length 8. They are drawn in as a 4 x 2 or 2 x 4 grid. We get
+    // four total rotations from them being drawn as a combination of the two dimensions, plus the option of
+    // reading in the terimos memory from right-to-left or left-to-right.
+    // 
+    // When it is rotated, It could potentially be drawn from top to bottom, left to right,
+    // right to left, or bottom up. These affect the for loop variables i, columnsOrRows, and 
+    // increment.
+    switch (rotation){
+        case 0 :
+            // // Row 1 of 2 x 4
+            // for (int i = 0; i < 4; i++){
+            //     frameData[currentTetrimoFrameIndex + i] = TETRIMOS[tetrimoTypeIndex][i];
+            // }
+            // // Row 2 of 2 x 4
+            // for (int i = 0; i < 4; i++){
+            //     frameData[currentTetrimoFrameIndex + rowSize + i] = TETRIMOS[tetrimoTypeIndex][i + 4];
+            // }
+            for (int r = 0; r < 2; r++){
+                for (int c = 0; c < 4; c++){
+                    frameData[tetrimoFrameIndex + (rowSize * r) + c] = TETRIMOS[tetrimoTypeIndex][c + (r * 4)];
+                }
+            }
+            break;
+        case 1 :
+            // for (int i = 0; i < 4; i++){
+            //     frameData[currentTetrimoFrameIndex + (rowSize * i)] = TETRIMOS[tetrimoTypeIndex][i];
+            // }
+            // for (int i = 4; i < 8; i++){
+            //     frameData[currentTetrimoFrameIndex + (rowSize * (i - 4) + 1)] = TETRIMOS[tetrimoTypeIndex][i];
+            // }
+            for (int r = 0; r < 4; r++){
+                for (int c = 0; c < 2; c++){
+                    frameData[tetrimoFrameIndex + (rowSize * r) + c] = TETRIMOS[tetrimoTypeIndex][(c * 4) + 3 - r];
+                }
+            }
+            break;
+        case 2 :
+            // for (int i = 7; i >= 4; i--){
+            //     frameData[currentTetrimoFrameIndex + (i - 4)] = TETRIMOS[tetrimoTypeIndex][i];
+            // }
+            // for (int i = 4; i >= 0; i--){
+            //     frameData[currentTetrimoFrameIndex + rowSize + i] = TETRIMOS[tetrimoTypeIndex][i];
+            // }
+            for (int r = 0; r < 2; r++){
+                for (int c = 0; c < 4; c++){
+                    frameData[tetrimoFrameIndex + (rowSize * r) + c] = TETRIMOS[tetrimoTypeIndex][7 - (c + (r * 4))];
+                }
+            }
+            break;
+        case 3 :
+            // for (int i = 7; i >= 4; i--){
+            //     frameData[currentTetrimoFrameIndex + (rowSize * (i - 4))] = TETRIMOS[tetrimoTypeIndex][i];
+            // }
+            // for (int i = 4; i >= 0; i--){
+            //     frameData[currentTetrimoFrameIndex + (rowSize * i + 1)] = TETRIMOS[tetrimoTypeIndex][i];
+            // }
+            for (int r = 0; r < 4; r++){
+                for (int c = 0; c < 2; c++){
+                    frameData[tetrimoFrameIndex + (rowSize * r) + c] = TETRIMOS[tetrimoTypeIndex][7 - ((c * 4) + 3 - r)];
+                }
+            }
+            break;
+        default :
+            printf("Error has occured, rotation is >4 or negative\n");
+            exit(EXIT_FAILURE);
+            break;
+    }
+}
+
+// Called whenever a Tetrimo is spawned. For a spawned Tetrimo, updateTetrimo() is called
+void spawnTetrimo(char frameData[], int tetrimoIndex){
+    int spawnIndex = (DEFAULT_WIDTH / 2);
+    if (DEFAULT_WIDTH > spawnIndex + 4){
+        printf("ERROR: Default width too small! Currently %d", DEFAULT_WIDTH);
+        exit(EXIT_FAILURE); 
+    }
+        
+    drawTetrimo(frameData, spawnIndex, tetrimoIndex, 0);
+}
+
+// returns 1 when tetrimo is 'set', otherwise returns 0
+int updateTetrimo(char frameData[], int currentTetrimoFrameIndex, int tetrimoTypeIndex, int rotation){
+    
+}
+
+void printPadding(int padding){
+    for (int p = 0; p < padding; p++){
+        printf(PADDING_CHAR);
+    }
+}
 
 void drawFrame(char frameData[], int frameDataSize, int frameWidth){
+    int terminalColSize = window.ws_col;
+    int frameHeight = frameDataSize / frameWidth;
+
+    // The Tetris grid is DEFAULT_WIDTH wide, DEFAULT_HEIGHT tall. To draw it in the center,
+    // we have to calulate the center of the terminal columns, then subtract DEFAULT_WIDTH / 2 from that
+    // to get the correct padding on the left side of the Tetris grid, and since its symmetrical, the right aswell.
+
+    int paddingW = (terminalColSize / 2) - ((DEFAULT_WIDTH + COMBINED_WALL_WIDTH) / 2);
+
     for (int h = 0; h < frameDataSize; h += frameWidth) {
+
+        // Prints out the padding on the left side
+        printPadding(paddingW);
+
+        // Prints out the information in frameData in the current row
         for (int w = h; w < h + frameWidth; w++){
             printf("%c", frameData[w]);
         }
+
+        // Prints out the padding on the right side
+        printPadding(paddingW);
+        
+        // If the terminal has an odd number of columns, we print 1 extra character. If its even, we have nothing else to print.
+        printPadding(terminalColSize % 2);
+
+        //printPadding(2);
+
         printf("\n");
     }
 }
@@ -46,30 +184,39 @@ void buildCleanFrame(char frameData[],  int frameDataSize, int frameWidth){
    fillRowWithSecondArg(frameData, '_', rowWidth, frameDataSize - frameWidth);
 }
 
-// Called once per 'frame' while running. Returns 0 on success, 1 on error, and a negative value on exit
+// Called once per 'frame' while running. Returns 1 on success, 0 on error, and a negative value on exit
 int update(char frameData[], int frameDataSize, int frameWidth, int frameNumber){
-    char input;
+    // TODO: Implement input that does not interrupt system
+    // char input;
 
+    // TODO: create an int rotation amount; rotation is from 0 - 3, 0 being default
+    //       if rotation key is pressed, increment rotation and then mod 4
 
-    // HANDLING INPUT HERE
-    input = getchar();
-    switch (input){
-        case 'w' : // rotates piece
-            break;
-        case 's' : // moves piece to the right
-            break;
-        case 'a' : // moves piece to the left
-            break;
-        case 'd' : // increases the speed of the piece falling while it is held down
-            break;
-        case 'k' :
-            return -1; // k kills 
-        default :
-            break;
-    }
+    // // HANDLING INPUT HERE
+    // input = getchar();
+    // switch (input){
+    //     case 'w' : // rotates piece
+    //         break;
+    //     case 's' : // moves piece to the right
+    //         break;
+    //     case 'a' : // moves piece to the left
+    //         break;
+    //     case 'd' : // increases the speed of the piece falling while it is held down
+    //         break;
+    //     case 'k' :
+    //         return -1; // k kills 
+    //     default :
+    //         break;
+    // }
+
+    int rotation = (frameNumber - 1) % 4;
+    buildCleanFrame(frameData, frameDataSize, frameWidth);
+    drawTetrimo(frameData, 5, 2, rotation);
+   
+
     printf("----Frame Number %d----\n", frameNumber);
     drawFrame(frameData, frameDataSize, frameWidth);
-    return 0;
+    return 1;
 }
 
 int main(int argc, char** argv){
@@ -83,12 +230,18 @@ int main(int argc, char** argv){
     int frameDataSize = frameWidth * frameHeight;
     char frameData[frameDataSize];
 
+    // terminal = initscr(); // CURSES.h
+
+    signal(SIGWINCH, onScreenResize); // FIXME: Error checking?
+
+    ioctl(fileno(stdout), TIOCGWINSZ, &window); // column width and height of terminal set
+
     printf("Welcome to Tetris!\n");
     buildCleanFrame(frameData, frameDataSize, frameWidth);
     // for (int i = 0; i < frameDataSize; i++){
     //     frameData[i] = 'x';
     // }
-    drawFrame(frameData, frameDataSize, frameWidth);
+    // drawFrame(frameData, frameDataSize, frameWidth);
 
     int frameNumber = 1;
     int running = 1;
@@ -96,6 +249,7 @@ int main(int argc, char** argv){
     while (running) {
         running = update(frameData, frameDataSize, frameWidth, frameNumber);
         frameNumber++;
-        sleep(1);
+        printf("\n");
+        sleep(2);
     }
 }
