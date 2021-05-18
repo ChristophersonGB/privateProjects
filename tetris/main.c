@@ -15,18 +15,38 @@
 
 const int ROW_WIDTH = DEFAULT_WIDTH + COMBINED_WALL_WIDTH;
 
-const char TETRIMOS[7][8] = 
+// const char TETRIMOS[7][] = 
+// {
+//     "l/rr", // I
+//     "l/uu", // J
+//     "r/uu", // L
+//     "rdl", // O 
+//     "r/dl", // S
+//     "l/d/r", // T
+//     "l/dr"  // Z
+// };
+
+typedef struct piece {
+    unsigned char blockPlacement;   // 8 bits that define the placement of a piece's blocks, 
+                                    // 1 for block, 0 for no block, 4 bits per row/column
+    char xOffset[4];                // this is the x offset added to the index to center the center piece
+    char yOffset[4];                // this is the y offset, one piece has 4 possible rotations thus 4 possible offsets
+} TETRIMO;
+
+const TETRIMO TETRIMOS[7] = 
 {
-    "xcxx----", // I
-    "x---cxx-", // J
-    "--x-xxc-", // L
-    "cc--cc--", // O 
-    "-xc cx--", // S
-    "-x--xcx-", // T
-    "xc---cx-"  // Z
+    {0b00001111, {0, 1, 0, 0}, {0, -2, -1, -2}}, // I
+    {0b00010111, {1, 1, -2, 0}, {0, -3, -1, 0}}, // J
+    {0b10001110, {-2, 1, 1, 0}, {0, 0, -1, -3}}, // L
+    {0b11001100, {-1, 1, 1, 1}, {0, 0, 0, -2}}, // O 
+    {0b01101100, {-1, 0, 0, 0}, {0, -1, 0, -2}}, // S
+    {0b01001110, {-1, 1, 0, 0}, {0, -1, -1, -2}}, // T
+    {0b11000110, {-1, 0, 0, 0}, {0, -1, 0, -2}}  // Z
 };
 
-// Tetrimos, when rotated, are off from their center. This array stores the offset for each Tetrimo to return to its center
+
+
+// // Tetrimos, when rotated, are off from their center. This array stores the offset for each Tetrimo to return to its center
 // const char TETRIMO_OFFSET[7][3] = 
 // {
 //     {1 - (2 * ROW_WIDTH), -1 - ROW_WIDTH, -ROW_WIDTH}, // I
@@ -45,18 +65,42 @@ struct winsize window;
 *   May 2021 - @ChristophersonGB
 *   
 *   
-*   - Currently Linux (potentially Unix-like) specific, not very portable
+*   - Currently Linux (potentially Unix) specific, not very portable
 *       EX: Terminal Size, exit code, etc
 *
 */
-
 
 void onScreenResize(int sig){
     ioctl(fileno(stdout), TIOCGWINSZ, &window);
 }
 
+// Returns 0 if there are no collisions, returns 1 if there are
+int checkCollision(char frameData[], int frameDataIndex){
+    // check if blocks being drawn to are anything other than ' ' or '_'
+    
+}
+
+void drawBlock(char frameData[], int blockIndex){
+    // TODO: Handle collision 
+    //       Every block must be checked for collision before anything is drawn, call checkCollision with tetrimo first 
+    frameData[blockIndex] = 'X';
+}
+
+// TODO: Handle collision
+// void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, int rotation){
+//     int bottomCenterPieceIndex;
+//     // int topLeftCenterPieceIndex; 
+//     TETRIMO tetrimo = TETRMIOS[tetrimoTypeIndex];
+//     for (int h = 0; h < tetrimo.centerHeight; h++){
+//         for (int w = 0; w < tetrimo.centerWidth; w++){
+//             frameData[tetrimoFrameIndex];
+//         }
+//     }
+// }
+
 void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, int rotation){
     int rowSize = DEFAULT_WIDTH + COMBINED_WALL_WIDTH;
+    TETRIMO tetrimo = TETRIMOS[tetrimoTypeIndex];
     // Tetrimos are stored as a string of length 8. They are drawn in as a 4 x 2 or 2 x 4 grid. We get
     // four total rotations from them being drawn as a combination of the two dimensions, plus the option of
     // reading in the terimos memory from right-to-left or left-to-right.
@@ -64,6 +108,9 @@ void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, 
     // When it is rotated, It could potentially be drawn from top to bottom, left to right,
     // right to left, or bottom up. These affect the for loop variables i, columnsOrRows, and 
     // increment.
+
+    tetrimoFrameIndex += tetrimo.xOffset[rotation];
+    tetrimoFrameIndex += (tetrimo.yOffset[rotation] * rowSize);
     switch (rotation){
         case 0 :
             // // Row 1 of 2 x 4
@@ -76,7 +123,9 @@ void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, 
             // }
             for (int r = 0; r < 2; r++){
                 for (int c = 0; c < 4; c++){
-                    frameData[tetrimoFrameIndex + (rowSize * r) + c] = TETRIMOS[tetrimoTypeIndex][c + (r * 4)];
+                    if (tetrimo.blockPlacement >> (c + (r * 4)) & 1){
+                        drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                    }
                 }
             }
             break;
@@ -89,7 +138,9 @@ void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, 
             // }
             for (int r = 0; r < 4; r++){
                 for (int c = 0; c < 2; c++){
-                    frameData[tetrimoFrameIndex + (rowSize * r) + c] = TETRIMOS[tetrimoTypeIndex][(c * 4) + 3 - r];
+                    if (tetrimo.blockPlacement >> ((c * 4) + 3 - r) & 1){
+                        drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                    }
                 }
             }
             break;
@@ -103,7 +154,9 @@ void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, 
             //tetrimoFrameIndex = tetrimoFrameIndex + 1; // test offset
             for (int r = 0; r < 2; r++){
                 for (int c = 0; c < 4; c++){
-                    frameData[tetrimoFrameIndex + (rowSize * r) + c] = TETRIMOS[tetrimoTypeIndex][7 - (c + (r * 4))];
+                    if (tetrimo.blockPlacement >> (7 - (c + (r * 4))) & 1){
+                        drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                    }
                 }
             }
             break;
@@ -115,9 +168,12 @@ void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, 
             //     frameData[currentTetrimoFrameIndex + (rowSize * i + 1)] = TETRIMOS[tetrimoTypeIndex][i];
             // }
             // tetrimoFrameIndex = tetrimoFrameIndex - rowSize;
+
             for (int r = 0; r < 4; r++){
                 for (int c = 0; c < 2; c++){
-                    frameData[tetrimoFrameIndex + (rowSize * r) + c] = TETRIMOS[tetrimoTypeIndex][7 - ((c * 4) + 3 - r)];
+                    if (tetrimo.blockPlacement >> (7 - ((c * 4) + 3 - r)) & 1){
+                        drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                    }
                 }
             }
             break;
