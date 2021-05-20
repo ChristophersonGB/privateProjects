@@ -271,7 +271,7 @@ void demo(char frameData[], int frameDataSize, int frameNumber){
     drawTetrimo(frameData, 53, tetrimoIndex, rotation);
 }
 
-// Called once per 'frame' while running. Returns 1 on success, 0 on error, and a negative value on exit
+// All game logic goes here, called once per frame before drawing
 int update(char frameData[], int frameDataSize, int frameNumber){
     // TODO: Implement input that does not interrupt system
     // char input;
@@ -301,24 +301,39 @@ int update(char frameData[], int frameDataSize, int frameNumber){
     // int rotation = (frameNumber - 1) % 4;
     // buildCleanFrame(frameData, frameDataSize, frameWidth);
     // drawTetrimo(frameData, 5, 5, rotation);
-
-    printf("----Frame Number %d----\n", frameNumber);
-    drawFrame(frameData, frameDataSize);
+    
     return 1;
 }
 
-// run function here (while loop from main)
+// Calls update() for game logic, then draws the current frame
+void run(){
+    int frameWidth = DEFAULT_WIDTH + COMBINED_WALL_WIDTH;
+    int frameHeight = DEFAULT_HEIGHT;
+
+    int frameDataSize = frameWidth * (frameHeight + 4); // we add four to the height to have extra space for spawned tetrimos
+    char frameData[frameDataSize];
+    char setPieces[frameDataSize]; // setPieces stores the frame of pieces that are 
+
+    int running = 1;
+    int frameNumber = 1;
+
+    buildCleanFrame(frameData, frameDataSize);
+
+    while (running){
+        sleep(1);
+        running = update(frameData, frameDataSize, frameNumber);
+        printf("----Frame Number %d----\n", frameNumber);
+        drawFrame(frameData, frameDataSize);
+        frameNumber++;
+    }
+}
 
 int main(int argc, char** argv){
     // check arguments, if there are 2 arguments, or 1 argument, then process input. if only 1 arg, set the default height to twenty
 
     // define char array of size DEFAULT_WIDTH + 2 for drawing the walls, otherwise 
 
-    int frameWidth = DEFAULT_WIDTH + COMBINED_WALL_WIDTH;
-    int frameHeight = DEFAULT_HEIGHT;
-
-    int frameDataSize = frameWidth * (frameHeight + 4); // we add four to the height to have extra space for spawned tetrimos
-    char frameData[frameDataSize];
+    
 
     // terminal = initscr(); // CURSES.h
 
@@ -327,19 +342,6 @@ int main(int argc, char** argv){
     ioctl(fileno(stdout), TIOCGWINSZ, &window); // column width and height of terminal set
 
     printf("Welcome to Tetris!\n");
-    buildCleanFrame(frameData, frameDataSize);
-    // for (int i = 0; i < frameDataSize; i++){
-    //     frameData[i] = 'x';
-    // }
-    // drawFrame(frameData, frameDataSize, frameWidth);
 
-    int frameNumber = 1;
-    int running = 1;
-
-    while (running) {
-        running = update(frameData, frameDataSize, frameNumber);
-        frameNumber++;
-        printf("\n");
-        sleep(2);
-    }
+    run();
 }
