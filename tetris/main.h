@@ -21,6 +21,9 @@ const int ROW_WIDTH = DEFAULT_WIDTH + COMBINED_WALL_WIDTH;
 //     "l/dr"  // Z
 // };
 
+
+// I was so proud of myself for using just one byte for the block placements... then I had to do the offsets...
+// decided against memory optimization there because it is mental health month
 typedef struct piece {
     unsigned char blockPlacement;   // 8 bits that define the placement of a piece's blocks, 
                                     // 1 for block, 0 for no block, 4 bits per row/column

@@ -235,9 +235,10 @@ void demo(char frameData[], int frameDataSize, int frameNumber){
 }
 
 // All game logic goes here, called once per frame before drawing
-int update(char frameData[], int frameDataSize, int frameNumber){
+int update(char frameData[], int frameDataSize, int framesSinceLastSetPiece){
     // TODO: Implement input that does not interrupt system
     // char input;
+    int difficultyLevel = 1; // gets higher as time goes on
 
     // TODO: create an int rotation amount; rotation is from 0 - 3, 0 being default
     //       if rotation key is pressed, increment rotation and then mod 4
@@ -259,6 +260,8 @@ int update(char frameData[], int frameDataSize, int frameNumber){
     //         break;
     // }
 
+    // Store frame number that last piece was set on, 
+
     demo(frameData, frameDataSize, frameNumber);
 
     // int rotation = (frameNumber - 1) % 4;
@@ -278,7 +281,7 @@ void run(int framesPerSecond){
     char setPieces[frameDataSize]; // setPieces stores the frame of pieces that are 
 
     int running = 1;
-    int frameNumber = 1;
+    int framesSinceLastSetPiece = 1;
 
     long framesPerNanosecond = (long) 1000000000 / framesPerSecond;
 
@@ -292,10 +295,10 @@ void run(int framesPerSecond){
 
     while (running){
         nanosleep(timer, NULL);
-        running = update(frameData, frameDataSize, frameNumber);
-        printf("----Frame Number %d----\n", frameNumber);
+        running = update(frameData, frameDataSize, framesSinceLastSetPiece);
+        printf("----Frame Number %d----\n", framesSinceLastSetPiece);
         drawFrame(frameData, frameDataSize);
-        frameNumber++;
+        framesSinceLastSetPiece++;
     }
 
     free(timer);
