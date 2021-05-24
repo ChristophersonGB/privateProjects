@@ -1,49 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
 // #include <curses.h> //figure out curses sometime
 #include <sys/ioctl.h> // used to find window size - unix-based specific
-#include <signal.h> // used to catch SIGWINCH
-// #include "main.h"
+#include <signal.h> // used to catch 
 
-#define DEFAULT_WIDTH           10      // default amount of spaces that tetrimos can be stacked in, horizontally
-#define DEFAULT_HEIGHT          20      // default amount of spaces that tetrimos can be stacked in, vertically
-#define COMBINED_WALL_WIDTH     2       // character width of one wall * 2
-#define PADDING_CHAR            "#"     // character to be printed outside of the 
-
-// tetrimos defined in main.h
-
-const int ROW_WIDTH = DEFAULT_WIDTH + COMBINED_WALL_WIDTH;
-
-// const char TETRIMOS[7][] = 
-// {
-//     "l/rr", // I
-//     "l/uu", // J
-//     "r/uu", // L
-//     "rdl", // O 
-//     "r/dl", // S
-//     "l/d/r", // T
-//     "l/dr"  // Z
-// };
-
-typedef struct piece {
-    unsigned char blockPlacement;   // 8 bits that define the placement of a piece's blocks, 
-                                    // 1 for block, 0 for no block, 4 bits per row/column
-    char xOffset[4];                // this is the x offset added to the index to center the center piece
-    char yOffset[4];                // this is the y offset, one piece has 4 possible rotations thus 4 possible offsets
-} TETRIMO;
-
-const TETRIMO TETRIMOS[7] = 
-{
-    {0b00001111, {0, 1, 0, 0}, {0, -2, -1, -2}}, // I
-    {0b00010111, {1, 1, -2, 0}, {0, -3, -1, 0}}, // J
-    {0b10001110, {-2, 1, 1, 0}, {0, 0, -1, -3}}, // L
-    {0b11001100, {-1, 1, 1, 1}, {0, 0, 0, -2}}, // O 
-    {0b01101100, {-1, 0, 0, 0}, {0, -1, 0, -2}}, // S
-    {0b01001110, {-1, 1, 0, 0}, {0, -1, -1, -2}}, // T
-    {0b11000110, {-1, 0, 0, 0}, {0, -1, 0, -2}}  // Z
-};
-
+#include "main.h"
 
 
 // // Tetrimos, when rotated, are off from their center. This array stores the offset for each Tetrimo to return to its center
@@ -58,7 +21,7 @@ const TETRIMO TETRIMOS[7] =
 //     {1, 2, 3}  // Z
 // };
 
-struct winsize window;
+
 
 /*
 *   Tetris Program
@@ -306,7 +269,7 @@ int update(char frameData[], int frameDataSize, int frameNumber){
 }
 
 // Calls update() for game logic, then draws the current frame
-void run(){
+void run(int framesPerSecond){
     int frameWidth = DEFAULT_WIDTH + COMBINED_WALL_WIDTH;
     int frameHeight = DEFAULT_HEIGHT;
 
@@ -317,22 +280,31 @@ void run(){
     int running = 1;
     int frameNumber = 1;
 
+    long framesPerNanosecond = (long) 1000000000 / framesPerSecond;
+
+    struct timespec *timer = malloc(sizeof(struct timespec));
+    timer->tv_sec = (int) framesPerNanosecond / 1000000000;
+    timer->tv_nsec = (long) framesPerNanosecond % 1000000000; // one second / framesPerSecond % one second
+    
+    
+
     buildCleanFrame(frameData, frameDataSize);
 
     while (running){
-        sleep(1);
+        nanosleep(timer, NULL);
         running = update(frameData, frameDataSize, frameNumber);
         printf("----Frame Number %d----\n", frameNumber);
         drawFrame(frameData, frameDataSize);
         frameNumber++;
     }
+
+    free(timer);
 }
 
 int main(int argc, char** argv){
     // check arguments, if there are 2 arguments, or 1 argument, then process input. if only 1 arg, set the default height to twenty
 
     // define char array of size DEFAULT_WIDTH + 2 for drawing the walls, otherwise 
-
     
 
     // terminal = initscr(); // CURSES.h
@@ -343,5 +315,10 @@ int main(int argc, char** argv){
 
     printf("Welcome to Tetris!\n");
 
-    run();
+    if (argc < 2){
+        run(60);
+    }
+    else {
+        run(atoi(argv[1]));
+    }    
 }
