@@ -5,6 +5,8 @@
 #define DEFAULT_HEIGHT          20      // default amount of spaces that tetrimos can be stacked in, vertically
 #define COMBINED_WALL_WIDTH     2       // character width of one wall * 2
 #define PADDING_CHAR            "#"     // character to be printed outside of the 
+#define DEFAULT_FRAME_RATE      12      // smooth print rate
+#define PIECE_SET               2       // return code sent by update() to run() to notify that a piece has been set
 
 // tetrimos defined in main.h
 

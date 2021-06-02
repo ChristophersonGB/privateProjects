@@ -61,19 +61,14 @@ void drawBlock(char frameData[], int blockIndex){
 //     }
 // }
 
-void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, int rotation){
+// if colCheck flag is 1, then the function checks collisions. If it is 0, it builds the block. Returns -1 on collision
+int drawBlockFromIndex(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, int rotation, int colCheck){
     int rowSize = DEFAULT_WIDTH + COMBINED_WALL_WIDTH;
     TETRIMO tetrimo = TETRIMOS[tetrimoTypeIndex];
-    // Tetrimos are stored as a string of length 8. They are drawn in as a 4 x 2 or 2 x 4 grid. We get
-    // four total rotations from them being drawn as a combination of the two dimensions, plus the option of
-    // reading in the terimos memory from right-to-left or left-to-right.
-    // 
-    // When it is rotated, It could potentially be drawn from top to bottom, left to right,
-    // right to left, or bottom up. These affect the for loop variables i, columnsOrRows, and 
-    // increment.
 
     tetrimoFrameIndex += tetrimo.xOffset[rotation];
     tetrimoFrameIndex += (tetrimo.yOffset[rotation] * rowSize);
+
     switch (rotation){
         case 0 :
             // // Row 1 of 2 x 4
@@ -87,7 +82,14 @@ void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, 
             for (int r = 0; r < 2; r++){
                 for (int c = 0; c < 4; c++){
                     if (tetrimo.blockPlacement >> (c + (r * 4)) & 1){
-                        drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                        if (colCheck){
+                            if (checkCollision(frameData, (tetrimoFrameIndex + (rowSize * r) + c)) == 1) {
+                                return -1;
+                            }
+                        }
+                        else {
+                            drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                        }   
                     }
                 }
             }
@@ -102,7 +104,14 @@ void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, 
             for (int r = 0; r < 4; r++){
                 for (int c = 0; c < 2; c++){
                     if (tetrimo.blockPlacement >> ((c * 4) + 3 - r) & 1){
-                        drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                        if (colCheck){
+                            if (checkCollision(frameData, (tetrimoFrameIndex + (rowSize * r) + c)) == 1) {
+                                return -1;
+                            }
+                        }
+                        else {
+                            drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                        } 
                     }
                 }
             }
@@ -118,7 +127,14 @@ void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, 
             for (int r = 0; r < 2; r++){
                 for (int c = 0; c < 4; c++){
                     if (tetrimo.blockPlacement >> (7 - (c + (r * 4))) & 1){
-                        drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                        if (colCheck){
+                            if (checkCollision(frameData, (tetrimoFrameIndex + (rowSize * r) + c)) == 1) {
+                                return -1;
+                            }
+                        }
+                        else {
+                            drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                        } 
                     }
                 }
             }
@@ -135,7 +151,14 @@ void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, 
             for (int r = 0; r < 4; r++){
                 for (int c = 0; c < 2; c++){
                     if (tetrimo.blockPlacement >> (7 - ((c * 4) + 3 - r)) & 1){
-                        drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                        if (colCheck){
+                            if (checkCollision(frameData, (tetrimoFrameIndex + (rowSize * r) + c)) == 1) {
+                                return -1;
+                            }
+                        }
+                        else {
+                            drawBlock(frameData, (tetrimoFrameIndex + (rowSize * r) + c));
+                        } 
                     }
                 }
             }
@@ -145,6 +168,24 @@ void drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, 
             exit(EXIT_FAILURE);
             break;
     }
+    return 0;
+}
+
+int drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, int rotation){
+    
+    // Tetrimos are stored as a string of length 8. They are drawn in as a 4 x 2 or 2 x 4 grid. We get
+    // four total rotations from them being drawn as a combination of the two dimensions, plus the option of
+    // reading in the terimos memory from right-to-left or left-to-right.
+    // 
+    // When it is rotated, It could potentially be drawn from top to bottom, left to right,
+    // right to left, or bottom up. These affect the for loop variables i, columnsOrRows, and 
+    // increment.
+
+    if (drawBlockFromIndex(frameData, tetrimoFrameIndex, tetrimoTypeIndex, rotation, 1) != 0){
+        return 1;
+    }
+    drawBlockFromIndex(frameData, tetrimoFrameIndex, tetrimoTypeIndex, rotation, 0);
+    
 }
 
 // Called whenever a Tetrimo is spawned. For a spawned Tetrimo, updateTetrimo() is called
@@ -210,7 +251,7 @@ void drawFrame(char frameData[], int frameDataSize){
 void fillRowWithSecondArg(char frameData[], char c, int rowWidth, int currentHeight){
     frameData[currentHeight] = '|';
     for (int i = 1; i <= rowWidth; i++){
-        frameData[currentHeight + i] =  c;
+        frameData[currentHeight + i] = c;
     }
     frameData[currentHeight + rowWidth + 1] = '|';
 }
@@ -235,10 +276,9 @@ void demo(char frameData[], int frameDataSize, int frameNumber){
 }
 
 // All game logic goes here, called once per frame before drawing
-int update(char frameData[], int frameDataSize, int framesSinceLastSetPiece){
+int update(char frameData[], int frameDataSize, int framesSinceLastSetPiece, int fallingSpeed){
     // TODO: Implement input that does not interrupt system
     // char input;
-    int difficultyLevel = 1; // gets higher as time goes on
 
     // TODO: create an int rotation amount; rotation is from 0 - 3, 0 being default
     //       if rotation key is pressed, increment rotation and then mod 4
@@ -261,8 +301,9 @@ int update(char frameData[], int frameDataSize, int framesSinceLastSetPiece){
     // }
 
     // Store frame number that last piece was set on, 
+    
 
-    demo(frameData, frameDataSize, frameNumber);
+    //demo(frameData, frameDataSize, framesSinceLastSetPiece);
 
     // int rotation = (frameNumber - 1) % 4;
     // buildCleanFrame(frameData, frameDataSize, frameWidth);
@@ -282,6 +323,8 @@ void run(int framesPerSecond){
 
     int running = 1;
     int framesSinceLastSetPiece = 1;
+    int fallingSpeed = 1;
+    int tetrimo;
 
     long framesPerNanosecond = (long) 1000000000 / framesPerSecond;
 
@@ -293,10 +336,14 @@ void run(int framesPerSecond){
 
     buildCleanFrame(frameData, frameDataSize);
 
-    while (running){
+    while (running > 0){
         nanosleep(timer, NULL);
-        running = update(frameData, frameDataSize, framesSinceLastSetPiece);
-        printf("----Frame Number %d----\n", framesSinceLastSetPiece);
+        running = update(frameData, frameDataSize, framesSinceLastSetPiece, fallingSpeed);
+        if (running == 2){
+            memcpy(setPieces, frameData, frameDataSize);
+            framesSinceLastSetPiece = 0;
+        }
+        printf("----Frame Number (since last set piece) %d----\n", framesSinceLastSetPiece);
         drawFrame(frameData, frameDataSize);
         framesSinceLastSetPiece++;
     }
@@ -319,7 +366,7 @@ int main(int argc, char** argv){
     printf("Welcome to Tetris!\n");
 
     if (argc < 2){
-        run(60);
+        run(DEFAULT_FRAME_RATE);
     }
     else {
         run(atoi(argv[1]));
