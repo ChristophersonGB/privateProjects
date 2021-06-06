@@ -5,6 +5,7 @@
 // #include <curses.h> //figure out curses sometime
 #include <sys/ioctl.h> // used to find window size - unix-based specific
 #include <signal.h> // used to catch 
+#include <string.h>
 
 #include "main.h"
 
@@ -40,7 +41,10 @@ void onScreenResize(int sig){
 // Returns 0 if there are no collisions, returns 1 if there are
 int checkCollision(char frameData[], int frameDataIndex){
     // check if blocks being drawn to are anything other than ' ' or '_'
-    
+    if (frameData[frameDataIndex] == ' ' || frameData[frameDataIndex] == '_'){
+        return 1;
+    }
+    return 0;
 }
 
 void drawBlock(char frameData[], int blockIndex){
@@ -185,7 +189,7 @@ int drawTetrimo(char frameData[], int tetrimoFrameIndex, int tetrimoTypeIndex, i
         return 1;
     }
     drawBlockFromIndex(frameData, tetrimoFrameIndex, tetrimoTypeIndex, rotation, 0);
-    
+    return 0;
 }
 
 // Called whenever a Tetrimo is spawned. For a spawned Tetrimo, updateTetrimo() is called
@@ -275,8 +279,16 @@ void demo(char frameData[], int frameDataSize, int frameNumber){
     drawTetrimo(frameData, 53, tetrimoIndex, rotation);
 }
 
+// TODO: Add a calculation that includes frames per second
+int determineTetrimoFrameIndex(int fallingSpeed, int framesSinceLastPiece){
+    int fallSpeedMultiplier = 1; // fallingSpeed ranges 0-8
+    int index = ((framesSinceLastPiece / (fallSpeedMultiplier * (9 - fallingSpeed))) * ROW_WIDTH) + 4;  
+    return index;
+}
+
+
 // All game logic goes here, called once per frame before drawing
-int update(char frameData[], int frameDataSize, int framesSinceLastSetPiece, int fallingSpeed){
+int update(char frameData[], int frameDataSize, int framesSinceLastSetPiece, int fallingSpeed, int tetrimoTypeIndex){
     // TODO: Implement input that does not interrupt system
     // char input;
 
@@ -299,10 +311,14 @@ int update(char frameData[], int frameDataSize, int framesSinceLastSetPiece, int
     //     default :
     //         break;
     // }
-
+    int retVal;
+    int index = determineTetrimoFrameIndex(fallingSpeed, framesSinceLastSetPiece);
     // Store frame number that last piece was set on, 
-    
+    retVal = drawTetrimo(frameData, index, tetrimoTypeIndex, 0);
 
+    if (retVal == 1){
+        return 2;
+    }
     //demo(frameData, frameDataSize, framesSinceLastSetPiece);
 
     // int rotation = (frameNumber - 1) % 4;
@@ -323,8 +339,8 @@ void run(int framesPerSecond){
 
     int running = 1;
     int framesSinceLastSetPiece = 1;
-    int fallingSpeed = 1;
-    int tetrimo;
+    int fallingSpeed = 7; // 0 to 8
+    int tetrimo = rand() % 8;
 
     long framesPerNanosecond = (long) 1000000000 / framesPerSecond;
 
@@ -338,10 +354,11 @@ void run(int framesPerSecond){
 
     while (running > 0){
         nanosleep(timer, NULL);
-        running = update(frameData, frameDataSize, framesSinceLastSetPiece, fallingSpeed);
+        running = update(frameData, frameDataSize, framesSinceLastSetPiece, fallingSpeed, tetrimo);
         if (running == 2){
             memcpy(setPieces, frameData, frameDataSize);
             framesSinceLastSetPiece = 0;
+            tetrimo = rand() % 8;
         }
         printf("----Frame Number (since last set piece) %d----\n", framesSinceLastSetPiece);
         drawFrame(frameData, frameDataSize);
