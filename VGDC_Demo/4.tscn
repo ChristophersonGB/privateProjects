@@ -1,0 +1,117 @@
+[gd_scene load_steps=16 format=2]
+
+[ext_resource path="res://UnlockedDoor.gd" type="Script" id=1]
+[ext_resource path="res://ectoplasm.gd" type="Script" id=2]
+[ext_resource path="res://unlocked_room.png" type="Texture" id=3]
+[ext_resource path="res://placeholder_credits.png" type="Texture" id=4]
+[ext_resource path="res://UI_mask.png" type="Texture" id=5]
+[ext_resource path="res://ghostS.png" type="Texture" id=6]
+[ext_resource path="res://ghostN.png" type="Texture" id=7]
+[ext_resource path="res://movement.gd" type="Script" id=12]
+[ext_resource path="res://ghostE.png" type="Texture" id=13]
+[ext_resource path="res://UI_ectoplasm_backdrop.png" type="Texture" id=14]
+[ext_resource path="res://UI_ectoplasm.png" type="Texture" id=15]
+[ext_resource path="res://out_of_plasm.png" type="Texture" id=16]
+
+[sub_resource type="RectangleShape2D" id=1]
+extents = Vector2( 15.8366, 17.9339 )
+
+[sub_resource type="CapsuleShape2D" id=2]
+radius = 94.0799
+height = 61.7732
+
+[sub_resource type="CircleShape2D" id=3]
+
+[node name="4" type="Node2D"]
+
+[node name="Background" type="Sprite" parent="."]
+scale = Vector2( 0.809615, 0.902443 )
+texture = ExtResource( 4 )
+centered = false
+
+[node name="UnlockedDoor" type="Area2D" parent="."]
+visible = false
+scale = Vector2( 2.76685, 2.03086 )
+script = ExtResource( 1 )
+
+[node name="Sprite" type="Sprite" parent="UnlockedDoor"]
+scale = Vector2( 0.192718, 0.273296 )
+texture = ExtResource( 3 )
+centered = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="UnlockedDoor"]
+position = Vector2( 263.533, 48.2509 )
+scale = Vector2( 0.97386, 1.82182 )
+shape = SubResource( 1 )
+disabled = true
+
+[node name="Ghost" type="Area2D" parent="."]
+position = Vector2( 438.929, 452.929 )
+scale = Vector2( 0.592505, 0.623376 )
+
+[node name="ghost_right" type="Sprite" parent="Ghost"]
+texture = ExtResource( 13 )
+
+[node name="ghost_left" type="Sprite" parent="Ghost"]
+scale = Vector2( -1, 1 )
+texture = ExtResource( 13 )
+
+[node name="ghost_back" type="Sprite" parent="Ghost"]
+texture = ExtResource( 7 )
+
+[node name="ghost_front" type="Sprite" parent="Ghost"]
+texture = ExtResource( 6 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ghost"]
+position = Vector2( -8.12866, 8.82977 )
+shape = SubResource( 2 )
+
+[node name="PossessionZone" type="Area2D" parent="Ghost"]
+visible = false
+
+[node name="Sprite" type="Sprite" parent="Ghost/PossessionZone"]
+scale = Vector2( 0.728831, 0.782409 )
+texture = ExtResource( 5 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ghost/PossessionZone"]
+scale = Vector2( 25.7241, 20.9984 )
+shape = SubResource( 3 )
+disabled = true
+
+[node name="Possessable" type="Node2D" parent="."]
+scale = Vector2( 0.592505, 0.623376 )
+script = ExtResource( 12 )
+
+[node name="UI" type="Node2D" parent="."]
+position = Vector2( 514.68, 284.79 )
+scale = Vector2( 0.393591, 0.393591 )
+
+[node name="out_of_plasm_warning" type="Sprite" parent="UI"]
+visible = false
+modulate = Color( 0.133333, 0.886275, 0.305882, 1 )
+texture = ExtResource( 16 )
+
+[node name="Timer" type="Timer" parent="UI"]
+
+[node name="EctoplasmBackdrop" type="Sprite" parent="UI/Timer"]
+position = Vector2( 933.549, 90.6044 )
+scale = Vector2( 0.209307, 0.187335 )
+texture = ExtResource( 14 )
+
+[node name="EctoplasmMeter" type="Sprite" parent="UI/Timer"]
+light_mask = 3
+position = Vector2( 931.027, 96.4884 )
+scale = Vector2( 0.0922144, 0.117755 )
+texture = ExtResource( 15 )
+
+[node name="EctoplasmTimer" type="Light2D" parent="UI/Timer"]
+position = Vector2( 930.975, 280 )
+scale = Vector2( 0.806134, 0.846394 )
+texture = ExtResource( 5 )
+mode = 3
+range_item_cull_mask = 2
+script = ExtResource( 2 )
+
+[connection signal="area_entered" from="UnlockedDoor" to="UnlockedDoor" method="onCollision"]
+[connection signal="area_entered" from="Ghost/PossessionZone" to="Possessable" method="possession_collision"]
+[connection signal="timeout" from="UI/Timer" to="UI/Timer/EctoplasmTimer" method="_on_Timer_timeout"]
